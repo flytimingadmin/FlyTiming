@@ -14,7 +14,7 @@
 
 import { formatResult } from '../format'
 import { parseTimestamptz } from '../clock'
-import type { Gender, LaneAssignment, Race, Result } from '../types'
+import { eventLabel as fullEventLabel, type LaneAssignment, type Race, type Result } from '../types'
 
 export interface HeatData {
   race: Race
@@ -35,10 +35,6 @@ export const isRelay = (r: Race) => /relay|\d\s*x\s*\d/i.test(r.event_name)
 
 const clean = (s: string | null | undefined) => (s ?? '').replace(/[,\r\n]+/g, ' ').replace(/\s+/g, ' ').trim()
 
-function eventLabel(r: Pick<Race, 'gender' | 'event_name'>) {
-  const g: Record<Gender, string> = { F: 'Girls', M: 'Boys', X: 'Mixed' }
-  return `${r.gender ? g[r.gender] + ' ' : ''}${r.event_name}`
-}
 
 /** Seconds with thousandths; m:ss.sss from a minute up (FinishLynx style). */
 export function formatThousandths(ms: number) {
@@ -87,21 +83,24 @@ export function planExport(all: HeatData[]): ExportPlan {
 }
 
 /**
- * Event numbers per (division, event) in schedule order, and Lynx round
- * numbers: a prelim and its final share an event number (prelim = round 1,
- * final = round 2); a final with no prelim is round 1.
+ * Event and Lynx round numbers. Heats imported from Hy-Tek keep Meet
+ * Manager's own numbers. Otherwise events are numbered in schedule order
+ * (after the highest imported number, so they can't collide), and a prelim
+ * and its final share an event number (prelim = round 1, final = round 2).
  */
 function eventNumbering(heats: HeatData[]) {
   const nums = new Map<string, number>()
   const hasPrelim = new Set<string>()
-  const key = (r: Race) => `${r.gender}|${r.event_name}`
+  const key = (r: Race) => `${r.division ?? ''}|${r.gender}|${r.event_name}`
+  let next = Math.max(0, ...heats.map((h) => h.race.ext_event_number ?? 0)) + 1
   for (const h of [...heats].sort((a, b) => a.race.sort_order - b.race.sort_order)) {
-    if (!nums.has(key(h.race))) nums.set(key(h.race), nums.size + 1)
+    if (h.race.ext_event_number) continue
+    if (!nums.has(key(h.race))) nums.set(key(h.race), next++)
     if (h.race.round === 'prelim') hasPrelim.add(key(h.race))
   }
   return {
-    eventNo: (r: Race) => nums.get(key(r))!,
-    roundNo: (r: Race) => (r.round === 'final' && hasPrelim.has(key(r)) ? 2 : 1),
+    eventNo: (r: Race) => r.ext_event_number ?? nums.get(key(r))!,
+    roundNo: (r: Race) => r.ext_round ?? (r.round === 'final' && hasPrelim.has(key(r)) ? 2 : 1),
   }
 }
 
@@ -111,7 +110,7 @@ export function buildLifFiles(heats: HeatData[]): ExportFile[] {
     const r = h.race
     const round = roundNo(r)
     const start = h.startedAt ? timeOfDay(h.startedAt) : ''
-    const header = [eventNo(r), round, r.heat_number, clean(`${eventLabel(r)}${r.round !== 'final' ? ' ' + r.round : ''}`),
+    const header = [eventNo(r), round, r.heat_number, clean(fullEventLabel(r)),
       '', '', '', '', '', '', start].join(',')
 
     const byLane = new Map(h.results.map((x) => [x.lane, x]))
@@ -134,7 +133,7 @@ export function buildLifFiles(heats: HeatData[]): ExportFile[] {
 }
 
 const ATHLETIC_NET_COLUMNS = [
-  'Type', 'Gender', 'Event', 'Round', 'Heat', 'HeatPlace', 'Place',
+  'Type', 'Gender', 'Division', 'Event', 'Round', 'Heat', 'HeatPlace', 'Place',
   'Result', 'Team', 'FirstName1', 'LastName1', 'Grade1',
 ] as const
 
@@ -148,7 +147,7 @@ export function athleticNetRows(heats: HeatData[]): string[][] {
   const events = new Map<string, Entry[]>()
   for (const h of individual) {
     const byLane = new Map(h.results.map((x) => [x.lane, x]))
-    const key = `${h.race.gender}|${h.race.event_name}|${h.race.round}`
+    const key = `${h.race.division ?? ''}|${h.race.gender}|${h.race.event_name}|${h.race.round}`
     for (const l of h.lanes) events.set(key, [...(events.get(key) ?? []), { h, l, res: byLane.get(l.lane) }])
   }
 
@@ -168,6 +167,7 @@ export function athleticNetRows(heats: HeatData[]): string[][] {
       rows.push([
         'Event',
         e.h.race.gender ?? '',
+        e.h.race.division ?? '',
         e.h.race.event_name,
         e.h.race.round === 'prelim' ? 'Prelim' : 'Finals',
         String(e.h.race.heat_number),

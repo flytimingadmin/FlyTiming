@@ -21,8 +21,12 @@ export interface Race {
   meet_id: string
   event_name: string
   gender: Gender | null
+  division: string | null
   round: string
   heat_number: number
+  /** Hy-Tek Meet Manager event / round numbers, when imported from lynx.evt */
+  ext_event_number: number | null
+  ext_round: number | null
   sort_order: number
   scheduled_at: string | null
   status: RaceStatus
@@ -52,10 +56,16 @@ export const RACE_STATUS_LABEL: Record<RaceStatus, string> = {
 
 export const GENDER_LABEL: Record<Gender, string> = { F: 'Girls', M: 'Boys', X: 'Mixed' }
 
-export function raceTitle(r: Pick<Race, 'event_name' | 'gender' | 'round' | 'heat_number'>) {
+/** "JV Girls 100m Hurdles prelim" — division, gender, event, round. */
+export function eventLabel(r: Pick<Race, 'event_name' | 'gender' | 'round'> & { division?: string | null }) {
+  const d = r.division ? `${r.division} ` : ''
   const g = r.gender ? `${GENDER_LABEL[r.gender]} ` : ''
   const round = r.round && r.round !== 'final' ? ` ${r.round}` : ''
-  return `${g}${r.event_name}${round} · Heat ${r.heat_number}`
+  return `${d}${g}${r.event_name}${round}`
+}
+
+export function raceTitle(r: Pick<Race, 'event_name' | 'gender' | 'round' | 'heat_number'> & { division?: string | null }) {
+  return `${eventLabel(r)} · Heat ${r.heat_number}`
 }
 
 export interface StartEvent {

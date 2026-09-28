@@ -77,7 +77,7 @@ export async function loadMeetHeats(meetId: string): Promise<HeatSummary[]> {
 export function groupByEvent(heats: HeatSummary[]) {
   const groups = new Map<string, HeatSummary[]>()
   for (const h of heats) {
-    const key = `${h.race.gender ?? ''}|${h.race.event_name}|${h.race.round}`
+    const key = `${h.race.division ?? ''}|${h.race.gender ?? ''}|${h.race.event_name}|${h.race.round}`
     groups.set(key, [...(groups.get(key) ?? []), h])
   }
   return [...groups.values()]

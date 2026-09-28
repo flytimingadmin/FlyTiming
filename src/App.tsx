@@ -10,6 +10,7 @@ import LaneSetup from './pages/LaneSetup'
 import StartPhone from './pages/StartPhone'
 import FinishPhone from './pages/FinishPhone'
 import Scoring from './pages/Scoring'
+import ImportHeats from './pages/ImportHeats'
 import type { ReactNode } from 'react'
 
 function RequireSession({ children }: { children: ReactNode }) {
@@ -48,6 +49,7 @@ export default function App() {
         <Route path="/join" element={<Join />} />
         <Route path="/meets/new" element={<RequireSession><NewMeet /></RequireSession>} />
         <Route path="/meets/:meetId" element={<RequireSession><MeetPage /></RequireSession>} />
+        <Route path="/meets/:meetId/import" element={<RequireSession><ImportHeats /></RequireSession>} />
         <Route path="/races/:raceId/lanes" element={<RequireSession><PerHeat><LaneSetup /></PerHeat></RequireSession>} />
         <Route path="/races/:raceId/start" element={<RequireSession><StartPhone /></RequireSession>} />
         <Route path="/races/:raceId/finish" element={<RequireSession><PerHeat><FinishPhone /></PerHeat></RequireSession>} />

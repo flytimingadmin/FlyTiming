@@ -166,6 +166,20 @@ distance/XC marking as a separate later problem.
   races + lanes + starts + recordings + results; progress bar, status
   filter chips, "Next to start" / "Next to score" links, heats grouped by
   event. Reloads (debounced) on Realtime changes to any of those tables.
+- **Heat import** (`/meets/:id/import`, `src/lib/import/`): Hy-Tek
+  Meet Manager's FinishLynx `lynx.evt` (header `Event,Round,Heat,Name,…`;
+  athlete lines start with a blank field: `,ID,Lane,Last,First,Team,…`;
+  `;` comments; ID 0 = no competitor number) or a spreadsheet paste with a
+  header row (Event, Heat, Lane, First/Last or Name; optional Gender,
+  Division, Round, Team, Bib, Grade). `eventName.ts` normalizes names
+  ("JV Girls 100 Meter Hurdles Prelims" → division JV, F, "100m Hurdles",
+  prelim). Without a round word, an event number with several rounds =
+  prelim(s) then final. Preview first; `planImport` matches existing heats
+  by Hy-Tek event/round/heat (else division+gender+event+round+heat):
+  create / update lanes (only if not started) / same / skip. Waterfall heats
+  (lane 0 or >12) are skipped. Migration `20260928000000_heat_import.sql`
+  adds `races.division`, `ext_event_number`, `ext_round`; `.lif` export
+  uses the ext numbers so results line up with Meet Manager.
 - **Rounding**: results display rounded UP to the hundredth
   (`formatResult`); ties at the displayed hundredth share a place. The
   export (step 7) must use the same rule.

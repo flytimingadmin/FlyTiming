@@ -461,3 +461,28 @@ a.upnext:hover { border-color: var(--text-muted); border-left-color: var(--blue)
 .threshold-field { gap: 0.35rem; }
 .threshold-slider { width: 100%; accent-color: var(--blue); height: 32px; }
 .warn { color: var(--amber); }
+
+/* ---- Heat import --------------------------------------------------------- */
+.import-cta { flex-direction: row; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.import-cta h2 { margin-bottom: 0.25rem; }
+.steps { margin: 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: 0.2rem; }
+.file-btn { align-self: flex-start; }
+.paste-box { min-height: 8rem; padding: 0.7rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; white-space: pre; }
+.import-summary { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.import-chip {
+  display: inline-flex; align-items: center; padding: 0.2rem 0.6rem; border-radius: 999px;
+  font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;
+  border: 1px solid currentColor; white-space: nowrap;
+}
+.act-create { color: var(--blue); }
+.act-update { color: var(--amber); }
+.act-same   { color: var(--text-muted); }
+.act-skip   { color: var(--red); }
+.import-groups { display: flex; flex-direction: column; gap: 0.8rem; max-height: 60vh; overflow: auto; }
+.import-group { display: flex; flex-direction: column; gap: 0.3rem; }
+.import-heat { background: var(--carbon-sunken); border-radius: 8px; padding: 0.5rem 0.75rem; }
+.import-heat summary { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; cursor: pointer; list-style: none; }
+.import-heat summary::-webkit-details-marker { display: none; }
+.import-heat .warn { margin: 0.4rem 0 0; }
+.import-lanes { margin-top: 0.4rem; }
+.import-done { border-color: var(--green); }

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { supabase, errorMessage } from '../lib/supabase'
-import { GENDER_LABEL, raceTitle, type Meet, type Race } from '../lib/types'
+import { eventLabel, raceTitle, type Meet } from '../lib/types'
 import { STATIONS, readStation, writeStation, type Station } from '../lib/stations'
 import {
   HEAT_STATES, HEAT_STATE_LABEL, groupByEvent, loadMeetHeats,
@@ -26,11 +26,6 @@ function heatDetail(h: HeatSummary) {
   return parts.join(' · ')
 }
 
-function eventTitle(r: Race) {
-  const g = r.gender ? `${GENDER_LABEL[r.gender]} ` : ''
-  const round = r.round && r.round !== 'final' ? ` · ${r.round}` : ''
-  return `${g}${r.event_name}${round}`
-}
 
 function UpNext({ label, heat, to }: { label: string; heat: HeatSummary | undefined; to: (id: string) => string }) {
   if (!heat) {
@@ -169,12 +164,14 @@ export default function MeetPage() {
           </div>
         </div>
         <p className="small muted station-hint">Tapping a heat opens it on this phone’s station.</p>
-        {total === 0 && <p className="muted">No heats yet — add the meet’s events below.</p>}
+        {total === 0 && (
+          <p className="muted">No heats yet. <Link to={`/meets/${meet.id}/import`}>Import a preheated meet</Link> or add events below.</p>
+        )}
         {filter && shown.length === 0 && <p className="muted">No heats are {HEAT_STATE_LABEL[filter].toLowerCase()}.</p>}
 
         {groupByEvent(shown).map((group) => (
           <div key={group[0].race.id} className="event-group">
-            <div className="event-title">{eventTitle(group[0].race)}</div>
+            <div className="event-title">{eventLabel(group[0].race)}</div>
             <ul className="list">
               {group.map((h) => (
                 <li key={h.race.id}>
@@ -193,6 +190,14 @@ export default function MeetPage() {
       </section>
 
       {total > 0 && <ExportCard meet={meet} scored={counts.scored} total={total} />}
+
+      <section className="card import-cta">
+        <div>
+          <h2>Import heats</h2>
+          <p className="small muted">Preheated in Hy-Tek or a spreadsheet? Bring in every heat and lane at once.</p>
+        </div>
+        <Link className="btn btn-primary" to={`/meets/${meet.id}/import`}>Import heats</Link>
+      </section>
 
       <AddHeatsForm meetId={meet.id} nextSort={nextSort} onAdded={load} />
     </main>
