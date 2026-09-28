@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { THRESHOLD_RANGE, type GunSettings, type Level, type DetectorStatus } from '../lib/gunDetector'
+import { RISE_RANGE, THRESHOLD_RANGE, type GunSettings, type Level, type DetectorStatus } from '../lib/gunDetector'
 
 const pct = (db: number) => `${Math.max(0, Math.min(100, ((db + 60) / 60) * 100))}%`
 
@@ -47,6 +47,7 @@ export default function GunPanel({ status, error, level, lastHit, loudest, setti
         <span className="eyebrow">{armed ? 'Listening for the gun' : 'Microphone on'}</span>
         <span className="small muted">
           trigger {settings.thresholdDb} dB{loudest !== null && ` · loudest ${Math.round(loudest)} dB`}
+          {level && ` · background ${Math.round(level.floorDb)} dB`}
         </span>
       </div>
       <div className="meter" aria-hidden="true">
@@ -63,7 +64,7 @@ export default function GunPanel({ status, error, level, lastHit, loudest, setti
         {recentHit
           ? <span className="hit">Heard a gun-level sound ({Math.round(lastHit!.peakDb)} dB) — this would have started the race.</span>
           : armed ? 'Anything that crosses the white line now starts the race.'
-          : 'Only a sharp blast past the white line starts the race. Taps, bumps and voices are filtered out.'}
+          : 'Only a sudden, sharp blast past the white line starts the race. Taps, bumps, voices and crowd noise are filtered out.'}
       </p>
 
       <details className="small">
@@ -84,8 +85,28 @@ export default function GunPanel({ status, error, level, lastHit, loudest, setti
               aria-label="Trigger level" disabled={armed} />
             <span className="row between small muted"><span>More sensitive</span><span>Less sensitive</span></span>
             <span className="small muted">
-              To set it: fire a test shot, read <em>loudest recent</em>, and set the trigger a few dB below it.
-              If other sounds still trigger it, move the slider right.
+              To set it: fire a test shot, read <em>loudest</em>, and set the trigger a few dB below it.
+              0 dB is the most a microphone can record — at the far right even the gun may not reach it.
+            </span>
+            {loudest !== null && settings.thresholdDb > loudest && (
+              <span className="small warn">The trigger is above the loudest recent sound — make sure a test shot still reaches it.</span>
+            )}
+          </label>
+          <label className="field threshold-field">
+            <span className="row between">
+              <span className="label">Sudden-jump requirement</span>
+              <span className="small"><strong>{settings.riseDb} dB</strong></span>
+            </span>
+            <input type="range" className="threshold-slider"
+              min={RISE_RANGE.min} max={RISE_RANGE.max} step={1}
+              value={settings.riseDb}
+              onChange={(e) => setSettings({ ...settings, riseDb: Number(e.target.value) })}
+              aria-label="Sudden-jump requirement" disabled={armed} />
+            <span className="row between small muted"><span>Allows slower sounds</span><span>Gunshots only</span></span>
+            <span className="small muted">
+              The blast must be this much louder than it was 5 ms earlier. A gun jumps from background to
+              full blast almost instantly; crowd roar, cheering and horns build up and can’t pass. If crowd
+              noise ever triggers it, move this right. If the gun is missed in a very loud venue, move it left.
             </span>
           </label>
           <label className="field">

@@ -104,8 +104,10 @@ distance/XC marking as a separate later problem.
   at 1.5 kHz (2nd-order Butterworth) and measured as RMS over a sliding
   3 ms window, so screen taps / strap rub / bumps (low-frequency) and
   single clicks can't trigger; voices sit low too. Triggers when that RMS ≥
-  the trigger level (slider −40…0 dB, default −12) AND ≥ 20 dB over the
-  rolling floor, only while Set is armed; the first 400 ms after arming are
+  the trigger level (slider −40…0 dB, default −12; 0 dB = mic full scale,
+  so it can't go higher) AND it jumped ≥ riseDb (slider 6–30, default 15)
+  vs the same 3 ms window 5 ms earlier — guns are near-instant; crowd roar,
+  cheers, horns and whistles build over tens of ms. Only while Set is armed; the first 400 ms after arming are
   ignored (the Set tap's thump) without starting the 1 s cooldown. Reported
   frame = first sample of the blast; the message waits 20 ms only to include
   the true peak level ("loudest recent" readout uses the same scale, for
@@ -113,8 +115,10 @@ distance/XC marking as a separate later problem.
   (arrival − frame time) over recent level messages; minus starter distance
   (÷343 m/s) and a per-device latency setting. Settings key
   `flytiming.gunDetect.v2`. Synthetic-audio results: thump that clips the
-  mic ≈ −22 dB, gun ≈ −4 dB, rub/shout/tick < −40 dB; two guns one loop
-  apart measured 6000 ms. Needs https (mic).
+  mic ≈ −22 dB, gun ≈ −4 dB, rub/shout/tick < −40 dB; over a −24 dB crowd
+  roar the cheer / air horn / whistle never trigger even at −40 dB with a
+  6 dB jump, the gun always does; two guns one loop apart measured
+  6000 ms. Needs https (mic).
 - **Meet-day setup** (decided): start phone strapped to the starter's
   forearm next to the gun (defaults: trigger −12 dB, distance 0.5 m); starter still taps Set before each gun. Finish phone on a tripod,
   manned. Lane device at the heating benches; scoring laptop in the press box.

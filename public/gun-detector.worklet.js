@@ -6,8 +6,10 @@
 // So we:
 //   1. high-pass the signal at ~1.5 kHz (2nd-order Butterworth),
 //   2. measure RMS over a sliding 3 ms window (a single click can't pass),
-//   3. trigger when that RMS is above the threshold AND ≥ riseDb above the
-//      rolling background,
+//   3. trigger when that RMS is above the threshold AND jumped by ≥ riseDb
+//      compared with the same window 5 ms earlier. A gun goes from
+//      background to full blast in < 1 ms; crowd roar, cheering swells and
+//      air horns build over tens of ms, so they can't pass however loud,
 //   4. ignore the first 400 ms after arming (the Set tap's own thump).
 // The reported frame is the first sample of the blast (sample-accurate).
 //
@@ -23,6 +25,7 @@ const linToDb = (x) => (x > 0 ? 20 * Math.log10(x) : -120)
 const HPF_HZ = 1500
 const WINDOW_S = 0.003
 const ARM_GUARD_S = 0.4
+const LOOKBACK_S = 0.005
 
 class GunDetector extends AudioWorkletProcessor {
   constructor() {
@@ -30,7 +33,7 @@ class GunDetector extends AudioWorkletProcessor {
     this.armed = false
     this.armGuard = 0
     this.thresholdDb = -12
-    this.riseDb = 20
+    this.riseDb = 15
     this.floorRms = dbToLin(-70)
     this.cooldown = 0
     this.meterFrames = 0
@@ -50,9 +53,11 @@ class GunDetector extends AudioWorkletProcessor {
     this.x1 = this.x2 = this.y1 = this.y2 = 0
 
     this.W = Math.max(8, Math.round(WINDOW_S * sampleRate))
-    this.ring = new Float64Array(1024)
+    this.D = Math.round(LOOKBACK_S * sampleRate)
+    this.ring = new Float64Array(2048)
     this.ringIdx = 0
     this.sumSq = 0
+    this.sumSqPrev = 0 // same-size window ending D samples ago
     this.samplesSeen = 0
 
     this.port.onmessage = (e) => {
@@ -72,8 +77,9 @@ class GunDetector extends AudioWorkletProcessor {
     const n = ch.length
     const R = this.ring.length
     const W = this.W
-    const thrLin = dbToLin(this.thresholdDb)
-    const threshold = Math.max(thrLin, this.floorRms * dbToLin(this.riseDb))
+    const D = this.D
+    const threshold = dbToLin(this.thresholdDb)
+    const rise = dbToLin(this.riseDb)
     let blockPeakRms = 0
     let triggered = false
 
@@ -83,12 +89,16 @@ class GunDetector extends AudioWorkletProcessor {
       this.x2 = this.x1; this.x1 = x; this.y2 = this.y1; this.y1 = y
 
       const old = this.ring[(this.ringIdx - W + R) % R]
+      const inPrev = this.ring[(this.ringIdx - D + R) % R]
+      const outPrev = this.ring[(this.ringIdx - D - W + R) % R]
       this.ring[this.ringIdx] = y
       this.sumSq += y * y - old * old
+      this.sumSqPrev += inPrev * inPrev - outPrev * outPrev
       this.ringIdx = (this.ringIdx + 1) % R
       this.samplesSeen++
-      if (this.samplesSeen < W) continue
+      if (this.samplesSeen < W + D) continue
       const rms = Math.sqrt(Math.max(0, this.sumSq) / W)
+      const rmsPrev = Math.sqrt(Math.max(0, this.sumSqPrev) / W)
       if (rms > blockPeakRms) blockPeakRms = rms
       if (this.pending) {
         if (rms > this.pending.peak) this.pending.peak = rms
@@ -101,7 +111,7 @@ class GunDetector extends AudioWorkletProcessor {
         }
       }
 
-      if (!triggered && this.cooldown <= 0 && rms >= threshold) {
+      if (!triggered && this.cooldown <= 0 && rms >= threshold && rms >= Math.max(rmsPrev, 1e-7) * rise) {
         // Just after arming: the Set tap's own thump. Ignore it without
         // starting the cooldown, so a gun right after still counts.
         if (this.armed && this.armGuard > i) continue
@@ -119,9 +129,13 @@ class GunDetector extends AudioWorkletProcessor {
       }
     }
     // Keep the running sum from drifting (float error) — recompute each block.
-    let s = 0
-    for (let k = 1; k <= W; k++) { const v = this.ring[(this.ringIdx - k + R) % R]; s += v * v }
+    let s = 0, sp = 0
+    for (let k = 1; k <= W; k++) {
+      const v = this.ring[(this.ringIdx - k + R) % R]; s += v * v
+      const u = this.ring[(this.ringIdx - D - k + R) % R]; sp += u * u
+    }
     this.sumSq = s
+    this.sumSqPrev = sp
 
     if (!triggered) {
       // Background level: slow average (~0.75 s) of the filtered RMS.
@@ -137,7 +151,7 @@ class GunDetector extends AudioWorkletProcessor {
     if (this.meterFrames >= sampleRate * 0.05) {
       this.port.postMessage({
         type: 'level', frameEnd: currentFrame + n,
-        peakDb: linToDb(this.meterPeak), floorDb: linToDb(this.floorRms), thresholdDb: linToDb(threshold),
+        peakDb: linToDb(this.meterPeak), floorDb: linToDb(this.floorRms), thresholdDb: this.thresholdDb,
       })
       this.meterFrames = 0
       this.meterPeak = 0

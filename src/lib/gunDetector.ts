@@ -14,18 +14,20 @@ import { useCallback, useEffect, useRef, useState } from 'react'
  * the same measure, so the level can be set just below a test shot.
  */
 export const THRESHOLD_RANGE = { min: -40, max: 0 }
-const RISE_DB = 20
+/** How much louder than 5 ms earlier the blast must be — rejects crowd roar, horns, cheering. */
+export const RISE_RANGE = { min: 6, max: 30 }
 const SPEED_OF_SOUND = 343 // m/s
 
-export interface GunSettings { thresholdDb: number; distanceM: number; latencyMs: number }
+export interface GunSettings { thresholdDb: number; riseDb: number; distanceM: number; latencyMs: number }
 // Default setup: phone strapped to the starter's forearm, right next to the gun.
-const DEFAULTS: GunSettings = { thresholdDb: -12, distanceM: 0.5, latencyMs: 0 }
+const DEFAULTS: GunSettings = { thresholdDb: -12, riseDb: 15, distanceM: 0.5, latencyMs: 0 }
 const KEY = 'flytiming.gunDetect.v2' // v1 used a different level measure
 
 export function readGunSettings(): GunSettings {
   try {
     const s = { ...DEFAULTS, ...JSON.parse(localStorage.getItem(KEY) ?? '{}') }
     s.thresholdDb = Math.min(THRESHOLD_RANGE.max, Math.max(THRESHOLD_RANGE.min, Number(s.thresholdDb) || DEFAULTS.thresholdDb))
+    s.riseDb = Math.min(RISE_RANGE.max, Math.max(RISE_RANGE.min, Number(s.riseDb) || DEFAULTS.riseDb))
     return s
   } catch { return DEFAULTS }
 }
@@ -62,7 +64,7 @@ export function useGunDetector(
   useEffect(() => { onGunRef.current = onGun; onHitRef.current = onHit }, [onGun, onHit])
 
   const sendConfig = useCallback((s: GunSettings) => {
-    nodeRef.current?.port.postMessage({ type: 'config', thresholdDb: s.thresholdDb, riseDb: RISE_DB })
+    nodeRef.current?.port.postMessage({ type: 'config', thresholdDb: s.thresholdDb, riseDb: s.riseDb })
   }, [])
 
   const setSettings = useCallback((s: GunSettings) => {

@@ -460,3 +460,4 @@ a.upnext:hover { border-color: var(--text-muted); border-left-color: var(--blue)
 .meter-hold { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--amber); }
 .threshold-field { gap: 0.35rem; }
 .threshold-slider { width: 100%; accent-color: var(--blue); height: 32px; }
+.warn { color: var(--amber); }
